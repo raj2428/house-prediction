@@ -1,40 +1,53 @@
 import streamlit as st
-import numpy as np
 import pickle
+import pandas as pd
 
-# Load model
-model = pickle.load(open("model.pkl", "rb"))
+# Load model and columns
+model = pickle.load(open('model.pkl', 'rb'))
+columns = pickle.load(open('columns.pkl', 'rb'))
 
-# Title
-st.title("❤️ Heart Disease Prediction App")
+st.title("🏠 Delhi House Price Prediction")
 
-st.write("Enter patient details below:")
+# ---------------- INPUTS ---------------- #
+st.sidebar.header("Enter House Details")
 
-# Input fields
-age = st.number_input("Age", min_value=1, max_value=100, value=25)
+area = st.sidebar.number_input("Area (sq ft)", min_value=100, max_value=10000)
+bhk = st.sidebar.number_input("BHK", min_value=1, max_value=10)
+bathroom = st.sidebar.number_input("Bathrooms", min_value=1, max_value=10)
 
-sex = st.selectbox("Sex", ["Male", "Female"])
-sex = 1 if sex == "Male" else 0
+# These must match your dataset categories
+localities = [col.replace("Locality_", "") for col in columns if "Locality_" in col]
+furnishing_types = [col.replace("Furnishing_", "") for col in columns if "Furnishing_" in col]
 
-cp = st.number_input("Chest Pain Type (0-3)", min_value=0, max_value=3)
+location = st.sidebar.selectbox("Location", sorted(localities))
+furnishing = st.sidebar.selectbox("Furnishing", sorted(furnishing_types))
 
-trestbps = st.number_input("Resting Blood Pressure")
+# ---------------- PREDICTION ---------------- #
+if st.button("Predict Price"):
 
-chol = st.number_input("Cholesterol Level")
+    # Create empty dataframe with all columns
+    input_data = pd.DataFrame([0]*len(columns)).T
+    input_data.columns = columns
 
-thalach = st.number_input("Maximum Heart Rate")
+    # Fill numeric values
+    if 'Area' in input_data.columns:
+        input_data.at[0, 'Area'] = area
+    if 'BHK' in input_data.columns:
+        input_data.at[0, 'BHK'] = bhk
+    if 'Bathroom' in input_data.columns:
+        input_data.at[0, 'Bathroom'] = bathroom
 
-# Prediction button
-if st.button("Predict"):
+    # Set locality
+    loc_col = f"Locality_{location}"
+    if loc_col in input_data.columns:
+        input_data.at[0, loc_col] = 1
 
-    # Create input array
-    input_data = np.array([[age, sex, cp, trestbps, chol, thalach]])
+    # Set furnishing
+    furn_col = f"Furnishing_{furnishing}"
+    if furn_col in input_data.columns:
+        input_data.at[0, furn_col] = 1
 
     # Prediction
     prediction = model.predict(input_data)
 
-    # Output
-    if prediction[0] > 0.5:
-        st.error("⚠️ High Risk of Heart Disease")
-    else:
-        st.success("✅ Low Risk of Heart Disease")
+    st.success(f"Estimated Price: ₹ {prediction[0]:,.2f}")
